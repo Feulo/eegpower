@@ -78,7 +78,7 @@ unsigned char buf = 0 ;
     int s, status, bytes_read;
     //endereço mac do dispositivo bt
     char dest[18] = "10:14:07:01:11:67";
-
+	const char command[2] = {0x00};
     // allocate a socket
     s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 
@@ -98,7 +98,7 @@ unsigned char buf = 0 ;
     if( status != 0 ) perror("Deu Ruim!");
      else
      {
-const char command[2] = {0x00};
+
       write(s, &command, 1);
 
 
