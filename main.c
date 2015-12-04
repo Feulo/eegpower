@@ -95,7 +95,7 @@ unsigned char buf = 0 ;
   //      status = write(s, "hello!", 6);
   //  }
 //verifica se dispositivo está acessivel
-    if( status != 0 ) perror("Deu Ruim!");
+    if( status != 0 ) perror("eu Ruim");
      else
      {
 
