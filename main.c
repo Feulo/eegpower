@@ -15,11 +15,24 @@
  #include <bluetooth/hci.h>
  #include <bluetooth/hci_lib.h>
 
+ #include <jack/jack.h>
+ #include <jack/ringbuffer.h>
+ #include <jack/types.h>
 
 
 
 
  #define PIN 1234
+
+ typedef struct {
+	jack_client_t * client;
+	jack_status_t status;
+	jack_port_t ** jack_ports;
+	float sample_rate;
+	//sine_data data;
+} eeg_signal;
+
+
 //aqui que a magia acontece...
 void handleDataValueFunc( unsigned char extendedCodeLevel,
 	       		  unsigned char code,
@@ -83,7 +96,9 @@ int main(int argc, char** argv) {
 	char addr_1[19] = { 0 };
 	unsigned char buf = 0 ;
 	char **addrs;	
-	
+	eeg_signal * signal  = (eeg_signal *) malloc(sizeof(eeg_signal *));
+
+
 	dev_id = hci_get_route(NULL);          //comunicacao com placa bluetooth
     	sock = hci_open_dev( dev_id );
 	if (dev_id < 0 || sock < 0) {
@@ -139,17 +154,43 @@ int main(int argc, char** argv) {
     	// connect to server
     	status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
 
-        if( status != 0 ) perror("eu Ruim");
-    	else{
+        if( status != 0 ){
+	      	perror("eu Ruim");
+    		exit(1);
+	}
+	
 		write(s, &command, 1);
-
-
        		ThinkGearStreamParser parser;
      		THINKGEAR_initParser( &parser, PARSER_TYPE_PACKETS,handleDataValueFunc, NULL );
-        	while( bytes_read = read(s, &buf, sizeof(buf)) ) {
-               		THINKGEAR_parseByte( &parser, buf);
-         	}
-     	}
+        
+	//cria um cliente do jack
+
+	if((signal->client = jack_client_open("Mindflex", JackNullOption, &signal->status)) == 0)
+		printf("Problemas criando cliente\n");
+	
+	else	printf("Jack Client Created\n");
+	
+	//armazena o sample rate do jack num float
+	signal->sample_rate = jack_get_sample_rate(signal->client);
+	//acho q cria o buffer do q eh tocado
+	signal->jack_ports = (jack_port_t **) malloc(1 * sizeof (jack_port_t *));
+	// registra o output
+	signal->jack_ports[0] = jack_port_register(signal->client, "OUTPUT" , JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+	// sta a funçao de callback ainda preciso entender
+	jack_set_process_callback(signal->client, oscillator_processCallback, signal);
+	// ativa o cliente
+	jack_activate(oscillator->client);
+
+
+
+		
+				
+		
+		
+	//	while( bytes_read = read(s, &buf, sizeof(buf)) ) {
+          //     		THINKGEAR_parseByte( &parser, buf);
+         //	}
+     	
 
     	close(s);
     	return 0;
