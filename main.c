@@ -19,10 +19,10 @@
  #include <jack/ringbuffer.h>
  #include <jack/types.h>
 
+#include "common.h"
 
 
 
- #define PIN 1234
 
  typedef struct {
 	jack_client_t * client;
@@ -31,6 +31,21 @@
 	float sample_rate;
 	//sine_data data;
 } eeg_signal;
+
+//callback do Jack
+int eeg_processCallback(jack_nframes_t nframes, void * args){
+  eeg_signal * signal = (eeg_signal *) args;
+  jack_default_audio_sample_t * out = (jack_default_audio_sample_t *) jack_port_get_buffer(signal->jack_ports[0], nframes);
+
+    int i= 0;
+    for(i = 0 ; i < nframes ; i++)
+    {
+      //rawdata vem aki
+      *out++ = 1;
+    }
+
+    return 0;
+}
 
 
 //aqui que a magia acontece...
@@ -45,7 +60,7 @@ void handleDataValueFunc( unsigned char extendedCodeLevel,
     	if( extendedCodeLevel == 0 ) {
 
         	switch( code ) {
-                       	
+
 			case( 0x04 ):	 /* [CODE]: ATTENTION eSense */
                 		printf( "Attention Level: %d\n", value[0] & 0xFF );
                 	break;
@@ -53,23 +68,23 @@ void handleDataValueFunc( unsigned char extendedCodeLevel,
                        	case( 0x05 ): 	/* [CODE]: MEDITATION eSense */
                 		printf( "Meditation Level: %d\n", value[0] & 0xFF );
                 	break;
-            
+
        			case( 0x80 ):	//xo colocar o detector de raw data aki pra gente
                     		printf( "RAW DATA: %d\n", (value[0]<<8) | value[1] );
-                     		rawData = (value[0]<<8) | value[1] ;    
-				fp=fopen("test.raw", "a+");
-				fputc(rawData, fp);
-				fclose(fp);
+                     		rawData = (value[0]<<8) | value[1] ;
+			//	fp=fopen("test.raw", "a+");
+				//fputc(rawData, fp);
+				//fclose(fp);
                     	break;
-                          
+
 			case( 0x02 ): //agora a informação de qualidade de sinal
                   		printf( "POOR SIGNAL: %d\n", value[0] & 0xFF );
                   	break;
 
-                       	case( 0x01 ): 
+                       	case( 0x01 ):
                   		printf( "Battery: %d\n", value[0] & 0xFF );
                   	break;
-            
+
             		default:	/* Other [CODE]s */
                 		printf( "EXCODE level: %d CODE: 0x%02X vLength: %d\n", extendedCodeLevel, code, valueLength );
                 		printf( "Data value(s):" );
@@ -85,7 +100,7 @@ void handleDataValueFunc( unsigned char extendedCodeLevel,
 int main(int argc, char** argv) {
 
 	struct sockaddr_rc addr = { 0 };	 //buffer... definir um tamanho adequado
-	int s, status, bytes_read;		 
+	int s, status, bytes_read;
 	char dest[18];// = "10:14:07:01:11:67";	//endereço mac do dispositivo bt
 	const char command[2] = {0x00};
 	int dev_id,sock,len,flags;
@@ -95,7 +110,7 @@ int main(int argc, char** argv) {
 	char name[248] = { 0 };
 	char addr_1[19] = { 0 };
 	unsigned char buf = 0 ;
-	char **addrs;	
+	char **addrs;
 	eeg_signal * signal  = (eeg_signal *) malloc(sizeof(eeg_signal *));
 
 
@@ -113,7 +128,7 @@ int main(int argc, char** argv) {
 
 	num_rsp = hci_inquiry(dev_id, len, max_rsp, NULL, &ii, flags);
 	if( num_rsp < 0 ) perror("hci_inquiry");
-	
+
 	addrs = (char**)malloc(num_rsp*sizeof(char*));
 
 	for (i = 0; i < num_rsp; i++) {
@@ -158,18 +173,18 @@ int main(int argc, char** argv) {
 	      	perror("eu Ruim");
     		exit(1);
 	}
-	
+
 		write(s, &command, 1);
        		ThinkGearStreamParser parser;
      		THINKGEAR_initParser( &parser, PARSER_TYPE_PACKETS,handleDataValueFunc, NULL );
-        
+
 	//cria um cliente do jack
 
 	if((signal->client = jack_client_open("Mindflex", JackNullOption, &signal->status)) == 0)
 		printf("Problemas criando cliente\n");
-	
+
 	else	printf("Jack Client Created\n");
-	
+
 	//armazena o sample rate do jack num float
 	signal->sample_rate = jack_get_sample_rate(signal->client);
 	//acho q cria o buffer do q eh tocado
@@ -177,20 +192,24 @@ int main(int argc, char** argv) {
 	// registra o output
 	signal->jack_ports[0] = jack_port_register(signal->client, "OUTPUT" , JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
 	// sta a funçao de callback ainda preciso entender
-	jack_set_process_callback(signal->client, oscillator_processCallback, signal);
+	jack_set_process_callback(signal->client, eeg_processCallback, signal);
 	// ativa o cliente
-	jack_activate(oscillator->client);
+	jack_activate(signal->client);
+
+ float a = 0;
+ short b= 0;
+ float c = 0;
+
+ a = b + c;
 
 
 
-		
-				
-		
-		
+
+
 	//	while( bytes_read = read(s, &buf, sizeof(buf)) ) {
           //     		THINKGEAR_parseByte( &parser, buf);
          //	}
-     	
+
 
     	close(s);
     	return 0;

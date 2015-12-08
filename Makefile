@@ -1,7 +1,7 @@
 APP=eegpower
 CC=gcc
-CFLAGS=-g
-LIBS=-lbluetooth
+CFLAGS=-lm -g
+LIBS=-lbluetooth -ljack
 SRC= main.c ThinkGearStreamParser.c
 OBJ=main.o ThinkGearStreamParser.o
 
